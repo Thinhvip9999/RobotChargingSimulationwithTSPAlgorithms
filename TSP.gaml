@@ -59,6 +59,16 @@ species robot {
 			remove last(start_index) from: indices_stack;
 			current_points <- points_stack[length(points_stack) - 1];
 			remove last(current_points) from: points_stack;
+			
+			if (start_index = length(current_points)) {
+				add current_points to: result;
+			} else {
+				loop i from: start_index to: length(current_points) {
+					point temp <- current_points[start_index];
+					current_points[start_index] <- current_points[i];
+					current_points[i] <- temp;
+				}
+			}
 		}
 		return result;
 	}
