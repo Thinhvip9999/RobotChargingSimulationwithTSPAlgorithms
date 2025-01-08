@@ -12,11 +12,28 @@ global {
 	//Generall parameter
 	string scenario; 
 	int neigborhood_type;
-	int grid_size_height;
-	int grid_size_width;
+	file Map <- csv_file("../includes/" + scenario + ".csv");
+	matrix Map_matrix <- matrix(Map);
+	int Map_width <- Map_matrix.columns();
+	int Map_height <- Map_matrix.rows();
 	
-	reflex check {
-		
+	init initialize {
+		loop i from: 0 to: Map_height -1 {
+			loop j from: 0 to: Map_width -1 {
+				if (int(Map_matrix[j, i]) = 2) {
+					cell[j, i].is_parking_zone <- true;
+				} else if (int(Map_matrix[j, i]) = 1) {
+					cell[j, i].is_obstacle <- true;
+				}
+			}
+		}
+		ask cell {
+			if (is_obstacle) {
+				color <- #black;
+			} else if (is_parking_zone) {
+				color <- #yellow;
+			}
+		}
 	}
 }
 
@@ -31,6 +48,8 @@ species robot {
 	//Generate all permutations of a list of points directly using recursion and swapping.
 	list generate_permutations(list<point> points) {
 		list result <- [];
+		list indices_stack <- [0];
+		list points_stack <- [points];
 		return result;
 	}
 	
@@ -40,9 +59,20 @@ species robot {
 		return robot_path;
 	}
 }
+
+grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
+	bool is_obstacle;
+	bool is_parking_zone;
+} 
  
 
-experiment tspExperiment type: gui {
-	parameter "MAP:" var: scenario <- "basement map" among: ["basement map"];
+experiment TSP type: gui {
+	parameter "MAP:" var: scenario <- "parking_lot" among: ["parking_lot"];
 	parameter "Type of Neighborhood:" var: neigborhood_type <- 4 among: [4, 8];
+	
+	output synchronized: true {
+		display main_display type: 2d antialias: false {
+			grid cell border: #black;
+		}
+	}
 }
