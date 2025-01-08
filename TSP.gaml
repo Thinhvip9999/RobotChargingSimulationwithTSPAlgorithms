@@ -50,6 +50,16 @@ species robot {
 		list result <- [];
 		list indices_stack <- [0];
 		list points_stack <- [points];
+		int start_index;
+		list current_points;
+		
+		loop while: (length(indices_stack) > 0) {
+			// The same concept with stack however can not found stack on GAMA so using list
+			start_index <- indices_stack[length(indices_stack ) - 1];
+			remove last(start_index) from: indices_stack;
+			current_points <- points_stack[length(points_stack) - 1];
+			remove last(current_points) from: points_stack;
+		}
 		return result;
 	}
 	
