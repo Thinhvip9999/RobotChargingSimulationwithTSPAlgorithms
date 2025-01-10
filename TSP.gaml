@@ -34,6 +34,7 @@ global {
 				color <- #yellow;
 			}
 		}
+		create robot number: 1;
 	}
 }
 
@@ -70,13 +71,58 @@ species robot {
 				}
 			}
 		}
+		
 		return result;
 	}
 	
 	//Solve the Traveling Salesman Problem (TSP).
-	path tsp_solver (point current_position, list<point> points) {
-		path robot_path;
-		return robot_path;
+	list tsp_solver (point current_position, list<point> points) {
+		list all_points <- [];
+		list<list> target_permutations;
+		float min_path_length;
+		list optimal_path;
+		
+		all_points <+ current_position;
+		all_points <<+ points;
+		target_permutations <- generate_permutations(points);
+		min_path_length  <- #max_float;
+		
+		loop perm over: target_permutations {
+			list path_checking;
+			float path_checking_length;
+			float distance_between_two_points;
+			
+			path_checking <+ current_position;
+			path_checking <<+ perm;
+			path_checking_length <- float(0);
+			
+			loop i from: 0 to: (length(path_checking) - 2) {
+				distance_between_two_points <- calculate_distance(path_checking[i], path_checking[i+1]);
+				path_checking_length <- path_checking_length + distance_between_two_points;
+				if (path_checking_length >= min_path_length) {
+					break;
+				}
+			}
+			
+			if(path_checking_length < min_path_length) {
+				min_path_length <- path_checking_length;
+				optimal_path <- path_checking;
+			}	
+		}
+		
+		return optimal_path;
+	}
+	reflex checking {
+		point current_position;
+		list<point> target_points;
+		list optimal_path;
+		
+		current_position <- {0,0};
+		target_points <- [{1, 2}, {3, 4}, {5, 1}];
+		optimal_path <- tsp_solver(current_position, target_points);
+		
+		write("Optimal Path" + optimal_path);
+		
 	}
 }
 
