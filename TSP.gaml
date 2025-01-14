@@ -72,31 +72,32 @@ species robot {
 	float calculate_distance(point point1, point point2){
 		float Euclidean_distance;
 		Euclidean_distance <- point1 distance_to point2;
+//		write("Distance between " + point1 + " to " + point2 + " is " + Euclidean_distance);
 		return Euclidean_distance;
 	}
 	
 	//Generate all permutations of a list of points directly using recursion and swapping.
 	list generate_permutations(list<point> points) {
-		list result <- [];
-		list indices_stack <- [0];
-		list points_stack <- [points];
+		list<list> result <- [];
+		list<int> indices_stack <- [0];
+		list<list> points_stack <- [points];
 		int start_index;
-		list current_points;
+		list<point> current_points;
 		
 		write("This is points stack: " + points_stack);
 		
 		loop while: (length(indices_stack) > 0) {
 			// The same concept with stack however can not found stack on GAMA so using list
-			write("Before: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
+//			write("Before: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
 			start_index <- indices_stack[length(indices_stack ) - 1];
 			remove last(start_index) from: indices_stack;
 			current_points <- points_stack[length(points_stack) - 1];
-			write("Current points is " + current_points);
+//			write("Current points is " + current_points);
 			remove last([points_stack[length(points_stack) - 1]]) from: points_stack;
-			write("After: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
+//			write("After: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
 			//write("Compare " + start_index + " and " + length(current_points));
 			if (start_index = length(current_points)) {
-				result <+ current_points;
+				result <<+ [current_points];
 			} else {
 				loop i from: start_index to: length(current_points) -1 {
 					point temp <- current_points[start_index];
@@ -104,12 +105,11 @@ species robot {
 					current_points[i] <- temp;
 					
 					indices_stack <+ start_index + 1;
-					points_stack <<+ current_points;
+					points_stack <<+ [current_points];
 					
-					temp <- current_points[start_index];
-					current_points[start_index] <- current_points[i];
-					current_points[i] <- temp;
-					indices_stack <+ start_index + 1;
+//					temp <- current_points[start_index];
+//					current_points[start_index] <- current_points[i];
+//					current_points[i] <- temp;
 				}
 			}
 		}
@@ -138,6 +138,8 @@ species robot {
 			float path_checking_length;
 			float distance_between_two_points;
 			
+			write("This is checking permutation" + perm);
+			
 			path_checking <+ current_position;
 			path_checking <<+ perm;
 //			write("Perm: " + perm);
@@ -150,7 +152,7 @@ species robot {
 //					write("No need to continue checking on this perm");
 					break;
 				}
-				write("End of one perm");
+//				write("End of one perm");
 			}
 			
 			if(path_checking_length < min_path_length) {
