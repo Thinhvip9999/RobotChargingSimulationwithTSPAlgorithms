@@ -113,7 +113,8 @@ species robot {
 		all_points <+ current_position;
 		all_points <<+ points;
 		target_permutations <- generate_permutations(points);
-		min_path_length  <- #max_float;
+		write("Number of permutations is " + length(target_permutations));
+		min_path_length  <- 9999999999.99; //#max_float
 		
 		loop perm over: target_permutations {
 			list path_checking;
@@ -128,11 +129,14 @@ species robot {
 				distance_between_two_points <- calculate_distance(path_checking[i], path_checking[i+1]);
 				path_checking_length <- path_checking_length + distance_between_two_points;
 				if (path_checking_length >= min_path_length) {
+					write("No need to continue checking on this perm");
 					break;
 				}
+				write("End of one perm");
 			}
 			
 			if(path_checking_length < min_path_length) {
+				write("Optimal Path found");
 				min_path_length <- path_checking_length;
 				optimal_path <- path_checking;
 			}	
