@@ -52,8 +52,10 @@ global {
 		}
 		ask robot {
 			robot_path <- tsp_solver(robot_location, list_goals);
-			write(robot_path);
+			write("Optimal path found: " + robot_path);
+			list_goals <- [];
 		}
+		do pause;
 	}
 }
 
@@ -81,16 +83,20 @@ species robot {
 		int start_index;
 		list current_points;
 		
+		write("This is points stack: " + points_stack);
+		
 		loop while: (length(indices_stack) > 0) {
 			// The same concept with stack however can not found stack on GAMA so using list
+			write("Before: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
 			start_index <- indices_stack[length(indices_stack ) - 1];
 			remove last(start_index) from: indices_stack;
 			current_points <- points_stack[length(points_stack) - 1];
-			remove last(current_points) from: points_stack;
+			write("Current points is " + current_points);
+			remove last([points_stack[length(points_stack) - 1]]) from: points_stack;
+			write("After: Indices_stack length: " + length(indices_stack) + " and Points_stack length: " + length(points_stack));
 			//write("Compare " + start_index + " and " + length(current_points));
 			if (start_index = length(current_points)) {
-				add current_points to: result;
-//				write("Current result is " + result);
+				result <+ current_points;
 			} else {
 				loop i from: start_index to: length(current_points) -1 {
 					point temp <- current_points[start_index];
@@ -113,17 +119,19 @@ species robot {
 	
 	//Solve the Traveling Salesman Problem (TSP).
 	list tsp_solver (point current_position, list<point> points) {
+		write("Robot starting position is " + current_position);
+		write("List of goals are " + points);
 		list all_points <- [];
-		list<list> target_permutations;
-		float min_path_length;
-		list optimal_path;
+		list<list> target_permutations <- [];
+		float min_path_length <- 9999999999.99; //#max_float
+		list optimal_path <- [];
 		// <+ add single variable 
 		// <<+ add entire list of that type
 		all_points <+ current_position;
 		all_points <<+ points;
+		write("Before permutation: " + points);
 		target_permutations <- generate_permutations(points);
 		write("Number of permutations is " + length(target_permutations));
-		min_path_length  <- 9999999999.99; //#max_float
 		
 		loop perm over: target_permutations {
 			list path_checking;
@@ -132,6 +140,7 @@ species robot {
 			
 			path_checking <+ current_position;
 			path_checking <<+ perm;
+//			write("Perm: " + perm);
 			path_checking_length <- float(0);
 			
 			loop i from: 0 to: (length(path_checking) - 2) {
@@ -145,7 +154,6 @@ species robot {
 			}
 			
 			if(path_checking_length < min_path_length) {
-				write("Optimal Path found");
 				min_path_length <- path_checking_length;
 				optimal_path <- path_checking;
 			}	
