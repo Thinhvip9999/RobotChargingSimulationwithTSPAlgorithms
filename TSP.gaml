@@ -17,6 +17,14 @@ global {
 	int Map_width <- Map_matrix.columns();
 	int Map_height <- Map_matrix.rows();
 	
+	// General size of species (car, robot, charging poles) in this simulation
+	float general_size <- 2.0;
+	
+	// Robot's variable
+	point robot_location;
+	list<point> list_goals;
+	list<point> robot_path;
+	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
 			loop j from: 0 to: Map_width -1 {
@@ -34,11 +42,30 @@ global {
 				color <- #yellow;
 			}
 		}
+		robot_location <- point((one_of (cell where not each.is_obstacle)).location);
 		create robot number: 1;
+	}
+	
+	reflex testing_robot_movement {
+		loop i from: 0 to: 3 {
+			list_goals <+ point((one_of (cell where each.is_parking_zone)).location);
+		}
+		ask robot {
+			robot_path <- tsp_solver(robot_location, list_goals);
+			write(robot_path);
+		}
 	}
 }
 
 species robot {
+	float size <- general_size;
+	rgb color <- #blue;
+	image_file robot_icon <- image_file("../includes/images/robot.png");
+	
+	init {
+		location <- robot_location;
+	}
+	
 	//Calculate the Euclidean distance between two points.
 	float calculate_distance(point point1, point point2){
 		float Euclidean_distance;
@@ -64,7 +91,7 @@ species robot {
 			if (start_index = length(current_points)) {
 				add current_points to: result;
 			} else {
-				loop i from: start_index to: length(current_points) {
+				loop i from: start_index to: length(current_points) -1 {
 					point temp <- current_points[start_index];
 					current_points[start_index] <- current_points[i];
 					current_points[i] <- temp;
@@ -81,7 +108,8 @@ species robot {
 		list<list> target_permutations;
 		float min_path_length;
 		list optimal_path;
-		
+		// <+ add single variable 
+		// <<+ add entire list of that type
 		all_points <+ current_position;
 		all_points <<+ points;
 		target_permutations <- generate_permutations(points);
@@ -112,17 +140,9 @@ species robot {
 		
 		return optimal_path;
 	}
-	reflex checking {
-		point current_position;
-		list<point> target_points;
-		list optimal_path;
-		
-		current_position <- {0,0};
-		target_points <- [{1, 2}, {3, 4}, {5, 1}];
-		optimal_path <- tsp_solver(current_position, target_points);
-		
-		write("Optimal Path" + optimal_path);
-		
+	
+	aspect icon{
+		draw robot_icon size: size;
 	}
 }
 
@@ -143,6 +163,7 @@ experiment TSP type: gui {
 	output synchronized: true {
 		display main_display type: 2d antialias: false {
 			grid cell border: #black;
+			species robot aspect: icon;
 		}
 	}
 }
