@@ -126,6 +126,10 @@ species robot {
 	}
 }
 
+species car {
+	
+}
+
 grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
 	bool is_obstacle;
 	bool is_parking_zone;
