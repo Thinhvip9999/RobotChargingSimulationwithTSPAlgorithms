@@ -87,14 +87,23 @@ species robot {
 			remove last(start_index) from: indices_stack;
 			current_points <- points_stack[length(points_stack) - 1];
 			remove last(current_points) from: points_stack;
-			
+			//write("Compare " + start_index + " and " + length(current_points));
 			if (start_index = length(current_points)) {
 				add current_points to: result;
+//				write("Current result is " + result);
 			} else {
 				loop i from: start_index to: length(current_points) -1 {
 					point temp <- current_points[start_index];
 					current_points[start_index] <- current_points[i];
 					current_points[i] <- temp;
+					
+					indices_stack <+ start_index + 1;
+					points_stack <<+ current_points;
+					
+					temp <- current_points[start_index];
+					current_points[start_index] <- current_points[i];
+					current_points[i] <- temp;
+					indices_stack <+ start_index + 1;
 				}
 			}
 		}
@@ -129,7 +138,7 @@ species robot {
 				distance_between_two_points <- calculate_distance(path_checking[i], path_checking[i+1]);
 				path_checking_length <- path_checking_length + distance_between_two_points;
 				if (path_checking_length >= min_path_length) {
-					write("No need to continue checking on this perm");
+//					write("No need to continue checking on this perm");
 					break;
 				}
 				write("End of one perm");
