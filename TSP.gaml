@@ -25,6 +25,19 @@ global {
 	list<point> list_goals;
 	list<point> robot_path;
 	
+	// Car's variable
+	list<image_file> ev_car_icons <- [
+		file("../includes/images/electric-car-green.png"),
+		file("../includes/images/electric-car-red.png")
+	];
+	point car_location;
+	// This variable is used to track when the cycle % 10 = 0
+	int cycle_track;
+	// This variable is used for storing the group of car position created in 10 cycle
+	list car_group_location;
+	float car_generate_possibility <- 0.3;
+	float car_charging_possibility <- 0.5;
+	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
 			loop j from: 0 to: Map_width -1 {
@@ -46,17 +59,49 @@ global {
 		create robot number: 1;
 	}
 	
-	reflex testing_robot_movement {
-		loop i from: 0 to: 3 {
-			list_goals <+ point((one_of (cell where each.is_parking_zone)).location);
+	reflex car_generation {
+		write("This is cycle number: " + cycle);
+		cycle_track <- cycle_track + 1;
+		bool is_car_generated <- flip(car_generate_possibility);
+		if (is_car_generated) {
+			car_location <- point((one_of (cell where each.is_parking_zone)).location);
+			car_group_location <+ car_location;
+			
+			bool is_car_need_charge <- flip(car_charging_possibility);
+			// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
+			if (is_car_need_charge) {
+				ask car {
+					need_charged <- true;
+					car_icon <- ev_car_icons[1];
+				}
+			} else {
+				ask car {
+					need_charged <- false;
+					car_icon <- ev_car_icons[0];
+				}
+			}
+			create car number: 1;
 		}
-		ask robot {
-			robot_path <- tsp_solver(robot_location, list_goals);
-			write("Optimal path found: " + robot_path);
-			list_goals <- [];
+		write("There are " + length(car_group_location) + " cars in parking area.");
+		if (cycle_track = 10) {
+			write("Finish the car_goup");
+			cycle_track <- 0;
+			car_group_location <- [];
+			do pause;
 		}
-		do pause;
 	}
+	
+//	reflex testing_robot_movement {
+//		loop i from: 0 to: 3 {
+//			list_goals <+ point((one_of (cell where each.is_parking_zone)).location);
+//		}
+//		ask robot {
+//			robot_path <- tsp_solver(robot_location, list_goals);
+//			write("Optimal path found: " + robot_path);
+//			list_goals <- [];
+//		}
+//		do pause;
+//	}
 }
 
 species robot {
@@ -138,7 +183,7 @@ species robot {
 			float path_checking_length;
 			float distance_between_two_points;
 			
-			write("This is checking permutation" + perm);
+//			write("This is checking permutation" + perm);
 			
 			path_checking <+ current_position;
 			path_checking <<+ perm;
@@ -170,7 +215,16 @@ species robot {
 }
 
 species car {
+	bool need_charged;
+	image_file car_icon;
 	
+	init {
+		location <- car_location;
+	}
+	
+	aspect icon {
+		draw car_icon size: general_size;
+	}
 }
 
 grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
@@ -187,6 +241,7 @@ experiment TSP type: gui {
 		display main_display type: 2d antialias: false {
 			grid cell border: #black;
 			species robot aspect: icon;
+			species car aspect: icon;
 		}
 	}
 }
