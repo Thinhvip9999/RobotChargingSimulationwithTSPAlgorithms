@@ -24,7 +24,8 @@ global {
 	point robot_location;
 	list<point> list_goals;
 	list<point> list_goal_in_optimal_sequence;
-	list<path> robot_path;
+	path robot_path;
+	list<path> robot_total_path;
 	
 	// Car's variable
 	list<image_file> ev_car_icons <- [
@@ -77,6 +78,16 @@ global {
 				ask robot {
 					list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
 					write("This is the optimal sequence: " + list_goal_in_optimal_sequence);
+					loop i from: 0 to: (length(list_goal_in_optimal_sequence) - 2){
+						point source <- list_goal_in_optimal_sequence[i];
+						point goal <- list_goal_in_optimal_sequence[i+1]; 
+						using topology(cell) {
+							robot_path <- path_between((cell where not each.is_obstacle), source, goal);
+						}
+						robot_total_path <+ robot_path;
+						write("Optimal Path ID: " + length(robot_total_path) + "Path: " + robot_path.vertices);
+					}
+					do move_to_charge;
 				}
 				do pause;	
 			}
@@ -254,6 +265,15 @@ species robot {
 		return optimal_path;
 	}
 	
+	// Moving action
+	action move_to_charge {
+		loop current_path over: robot_total_path {
+			loop i from:0 to: (length(current_path.vertices) - 1) {
+				location <- current_path.vertices[i];
+			}
+		}
+	}
+	
 	aspect icon{
 		draw robot_icon size: size;
 	}
@@ -310,6 +330,16 @@ experiment TSP type: gui {
 			species robot aspect: icon;
 			species car aspect: icon;
 			graphics "elements" {
+				if (length(robot_total_path) > 1) {
+					loop r over: robot_total_path {
+						loop i over: r.vertices[0::(length(r.vertices) - 1)]{
+							draw triangle(0.5) color: #pink border: #black at: point(i);
+						}
+						loop s over: r.segments {
+							draw s color: #green ;
+						}
+					}
+				}
 				loop v over: car_path.vertices[0::(length(car_path.vertices)-1)] {
 					draw triangle(0.5) color: #yellow border: #red at: point(v);
 				}
