@@ -30,7 +30,7 @@ global {
 		file("../includes/images/electric-car-green.png"),
 		file("../includes/images/electric-car-red.png")
 	];
-	point car_location;
+	point car_parking_location;
 	// This variable is used to track when the cycle % 10 = 0
 	int cycle_track;
 	// This variable is used for storing the group of car position created in 10 cycle
@@ -41,6 +41,9 @@ global {
 	list<car> car_group_need_charge;
 	float car_generate_possibility <- 0.3;
 	float car_charging_possibility <- 0.5;
+	// This variable is used for creating the first position of car when entering basement
+	list car_initial_locations_list <- [cell[1,39], cell[2,39], cell[3,39]];
+	path car_path;
 	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
@@ -69,32 +72,42 @@ global {
 			cycle_track <- 0;
 			car_group_location <- [];
 			car_group <- car.population;
-			do pause;
 		} else {
 	//		write("This is cycle number: " + cycle);
 			cycle_track <- cycle_track + 1;
 			bool is_car_generated <- flip(car_generate_possibility);
 			if (is_car_generated) {
-				car_location <- point((one_of (cell where each.is_parking_zone)).location);
+				car_parking_location <- point((one_of (cell where each.is_parking_zone)).location);
 				create car number: 1;
 				car created_car <- car.population[length(car.population)- 1];
 				
 				//Update on 2 groups of car location and car species
-				car_group_location <+ car_location;
+				car_group_location <+ car_parking_location;
 				
 				bool is_car_need_charge <- flip(car_charging_possibility);
 				// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
 				if (is_car_need_charge) {
 					ask created_car {
+						// Features
 						need_charged <- true;
+						car_target_location <- car_parking_location;
+						
+						//Actions
 						do get_car_icon;
+						do move_to_parking_lot;
+						
 						car_group_need_charge <+ created_car;
 						write("These are cars need charge: " + car_group_need_charge);
 					}
 				} else {
 					ask created_car {
+						//Features
 						need_charged <- false;
+						car_target_location <- car_parking_location;
+						
+						//Actions
 						do get_car_icon;
+						do move_to_parking_lot;
 					}
 				}
 			}
@@ -115,7 +128,7 @@ global {
 //	}
 }
 
-species robot {
+species robot skills: [moving] {
 	float size <- general_size;
 	rgb color <- #blue;
 	image_file robot_icon <- image_file("../includes/images/robot.png");
@@ -225,12 +238,14 @@ species robot {
 	}
 }
 
-species car {
+species car skills: [moving] {
 	bool need_charged;
 	image_file car_icon;
+	point car_initial_location <- point(one_of(car_initial_locations_list));
+	point car_target_location;
 	
 	init {
-		location <- car_location;
+		location <- car_initial_location;
 	}
 	
 	action get_car_icon{
@@ -239,6 +254,13 @@ species car {
 		} else {
 			car_icon <- ev_car_icons[0];
 		}
+	}
+	
+	action move_to_parking_lot {
+		using topology(cell) {
+			car_path <- path_between((cell where not each.is_obstacle), car_initial_location, car_target_location);
+		}
+		do follow speed: speed * 2 path: car_path;
 	}
 	
 	aspect icon {
