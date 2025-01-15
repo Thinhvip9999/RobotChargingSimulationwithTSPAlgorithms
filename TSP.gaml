@@ -42,8 +42,7 @@ global {
 	float car_generate_possibility <- 0.3;
 	float car_charging_possibility <- 0.5;
 	// This variable is used for creating the first position of car when entering basement
-	list car_initial_locations_list <- [cell[1,39], cell[2,39], cell[3,39]];
-	path car_path;
+	list car_initial_locations_list <- [];
 	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
@@ -68,7 +67,7 @@ global {
 	
 	reflex car_generation {
 		if (cycle_track = 9) {
-			write("Finish the car_goup");
+//			write("Finish the car_goup");
 			cycle_track <- 0;
 			car_group_location <- [];
 			car_group <- car.population;
@@ -77,7 +76,14 @@ global {
 			cycle_track <- cycle_track + 1;
 			bool is_car_generated <- flip(car_generate_possibility);
 			if (is_car_generated) {
-				car_parking_location <- point((one_of (cell where each.is_parking_zone)).location);
+				cell parking_cell <- one_of (cell where (each.is_parking_zone and not each.is_occupied));
+				car_parking_location <- point(parking_cell.location);
+				parking_cell.is_occupied <- true;
+				ask parking_cell {
+					if (is_occupied) {
+						color <- #red;
+					}
+				}
 				create car number: 1;
 				car created_car <- car.population[length(car.population)- 1];
 				
@@ -97,7 +103,7 @@ global {
 						do move_to_parking_lot;
 						
 						car_group_need_charge <+ created_car;
-						write("These are cars need charge: " + car_group_need_charge);
+//						write("These are cars need charge: " + car_group_need_charge);
 					}
 				} else {
 					ask created_car {
@@ -111,7 +117,7 @@ global {
 					}
 				}
 			}
-			write("In " + cycle + ", There are " + length(car_group_location) + " cars in parking area.");
+//			write("In " + cycle + ", There are " + length(car_group_location) + " cars in parking area.");
 		}
 	}
 	
@@ -128,7 +134,7 @@ global {
 //	}
 }
 
-species robot skills: [moving] {
+species robot {
 	float size <- general_size;
 	rgb color <- #blue;
 	image_file robot_icon <- image_file("../includes/images/robot.png");
@@ -238,11 +244,12 @@ species robot skills: [moving] {
 	}
 }
 
-species car skills: [moving] {
+species car {
 	bool need_charged;
 	image_file car_icon;
-	point car_initial_location <- point(one_of(car_initial_locations_list));
+	point car_initial_location <- point(one_of([cell[1,39], cell[2,39], cell[3,39]]));
 	point car_target_location;
+	path car_path;
 	
 	init {
 		location <- car_initial_location;
@@ -260,7 +267,11 @@ species car skills: [moving] {
 		using topology(cell) {
 			car_path <- path_between((cell where not each.is_obstacle), car_initial_location, car_target_location);
 		}
-		do follow speed: speed * 2 path: car_path;
+		write("This is car path: " + car_path.vertices);
+		loop i from: 0 to: (length(car_path.vertices) -1) {
+			 location <- car_path.vertices[i];
+			 write("New location: " + car_path.vertices[i]);
+		}
 	}
 	
 	aspect icon {
@@ -271,6 +282,7 @@ species car skills: [moving] {
 grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
 	bool is_obstacle;
 	bool is_parking_zone;
+	bool is_occupied;
 } 
  
 
