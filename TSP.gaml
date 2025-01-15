@@ -44,6 +44,8 @@ global {
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
 	path car_path;
+	// This variable is used to store location of car that need charge
+	list<point> list_car_need_charge_locations;
 	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
@@ -66,7 +68,8 @@ global {
 		create robot number: 1;
 	}
 	
-	reflex car_generation {
+	reflex play_simulation {
+		// When cycle track reach 9 (10 cycles) => reset all counter variable after run robot algorithms on those variable 
 		if (cycle_track = 9) {
 //			write("Finish the car_goup");
 			cycle_track <- 0;
@@ -104,6 +107,8 @@ global {
 						do move_to_parking_lot;
 						
 						car_group_need_charge <+ created_car;
+						list_car_need_charge_locations <+ created_car.location;
+						write ("There are " + length(list_car_need_charge_locations) + " in the line!" );
 //						write("These are cars need charge: " + car_group_need_charge);
 					}
 				} else {
