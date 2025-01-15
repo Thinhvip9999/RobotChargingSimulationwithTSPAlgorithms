@@ -39,10 +39,11 @@ global {
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.3;
+	float car_generate_possibility <- 0.01;
 	float car_charging_possibility <- 0.5;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
+	path car_path;
 	
 	init initialize {
 		loop i from: 0 to: Map_height -1 {
@@ -249,7 +250,6 @@ species car {
 	image_file car_icon;
 	point car_initial_location <- point(one_of([cell[1,39], cell[2,39], cell[3,39]]));
 	point car_target_location;
-	path car_path;
 	
 	init {
 		location <- car_initial_location;
@@ -265,12 +265,12 @@ species car {
 	
 	action move_to_parking_lot {
 		using topology(cell) {
-			car_path <- path_between((cell where not each.is_obstacle), car_initial_location, car_target_location);
+			car_path <- path_between((cell where (not each.is_obstacle)), car_initial_location, car_target_location);
 		}
 		write("This is car path: " + car_path.vertices);
 		loop i from: 0 to: (length(car_path.vertices) -1) {
 			 location <- car_path.vertices[i];
-			 write("New location: " + car_path.vertices[i]);
+//			 write("New location: " + car_path.vertices[i]);
 		}
 	}
 	
@@ -295,6 +295,14 @@ experiment TSP type: gui {
 			grid cell border: #black;
 			species robot aspect: icon;
 			species car aspect: icon;
+			graphics "elements" {
+				loop v over: car_path.vertices[0::(length(car_path.vertices)-1)] {
+					draw triangle(0.5) color: #yellow border: #red at: point(v);
+				}
+				loop s over: car_path.segments {
+					draw s color: #red ;
+				}
+			}
 		}
 	}
 }
