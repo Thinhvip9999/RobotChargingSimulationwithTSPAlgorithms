@@ -23,7 +23,8 @@ global {
 	// Robot's variable
 	point robot_location;
 	list<point> list_goals;
-	list<point> robot_path;
+	list<point> list_goal_in_optimal_sequence;
+	list<path> robot_path;
 	
 	// Car's variable
 	list<image_file> ev_car_icons <- [
@@ -39,7 +40,7 @@ global {
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.01;
+	float car_generate_possibility <- 0.3;
 	float car_charging_possibility <- 0.5;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
@@ -71,7 +72,15 @@ global {
 	reflex play_simulation {
 		// When cycle track reach 9 (10 cycles) => reset all counter variable after run robot algorithms on those variable 
 		if (cycle_track = 9) {
-//			write("Finish the car_goup");
+			// Impplement the TSP here
+			if (length(list_car_need_charge_locations) > 0) {
+				ask robot {
+					list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
+					write("This is the optimal sequence: " + list_goal_in_optimal_sequence);
+				}
+				do pause;	
+			}
+			//Reset all the tracking variable
 			cycle_track <- 0;
 			car_group_location <- [];
 			car_group <- car.population;
@@ -88,7 +97,7 @@ global {
 						color <- #red;
 					}
 				}
-				create car number: 1;
+				create car number: 1; 
 				car created_car <- car.population[length(car.population)- 1];
 				
 				//Update on 2 groups of car location and car species
