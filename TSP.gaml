@@ -35,6 +35,10 @@ global {
 	int cycle_track;
 	// This variable is used for storing the group of car position created in 10 cycle
 	list car_group_location;
+	// This variable is used to store list of car species in 10 cycle;
+	list car_group;
+	// This variable is used to track how many car need charge;
+	list<car> car_group_need_charge;
 	float car_generate_possibility <- 0.3;
 	float car_charging_possibility <- 0.5;
 	
@@ -60,34 +64,41 @@ global {
 	}
 	
 	reflex car_generation {
-		write("This is cycle number: " + cycle);
-		cycle_track <- cycle_track + 1;
-		bool is_car_generated <- flip(car_generate_possibility);
-		if (is_car_generated) {
-			car_location <- point((one_of (cell where each.is_parking_zone)).location);
-			car_group_location <+ car_location;
-			
-			bool is_car_need_charge <- flip(car_charging_possibility);
-			// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
-			if (is_car_need_charge) {
-				ask car {
-					need_charged <- true;
-					car_icon <- ev_car_icons[1];
-				}
-			} else {
-				ask car {
-					need_charged <- false;
-					car_icon <- ev_car_icons[0];
-				}
-			}
-			create car number: 1;
-		}
-		write("There are " + length(car_group_location) + " cars in parking area.");
-		if (cycle_track = 10) {
+		if (cycle_track = 9) {
 			write("Finish the car_goup");
 			cycle_track <- 0;
 			car_group_location <- [];
+			car_group <- car.population;
 			do pause;
+		} else {
+	//		write("This is cycle number: " + cycle);
+			cycle_track <- cycle_track + 1;
+			bool is_car_generated <- flip(car_generate_possibility);
+			if (is_car_generated) {
+				car_location <- point((one_of (cell where each.is_parking_zone)).location);
+				create car number: 1;
+				car created_car <- car.population[length(car.population)- 1];
+				
+				//Update on 2 groups of car location and car species
+				car_group_location <+ car_location;
+				
+				bool is_car_need_charge <- flip(car_charging_possibility);
+				// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
+				if (is_car_need_charge) {
+					ask created_car {
+						need_charged <- true;
+						do get_car_icon;
+						car_group_need_charge <+ created_car;
+						write("These are cars need charge: " + car_group_need_charge);
+					}
+				} else {
+					ask created_car {
+						need_charged <- false;
+						do get_car_icon;
+					}
+				}
+			}
+			write("In " + cycle + ", There are " + length(car_group_location) + " cars in parking area.");
 		}
 	}
 	
@@ -220,6 +231,14 @@ species car {
 	
 	init {
 		location <- car_location;
+	}
+	
+	action get_car_icon{
+		if(need_charged) {
+			car_icon <- ev_car_icons[1];
+		} else {
+			car_icon <- ev_car_icons[0];
+		}
 	}
 	
 	aspect icon {
