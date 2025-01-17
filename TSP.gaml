@@ -9,7 +9,7 @@
 model TSP
 
 global {
-	//Generall parameter
+	//Generall Variable
 	string scenario; 
 	int neigborhood_type;
 	file Map <- csv_file("../includes/" + scenario + ".csv");
@@ -17,15 +17,21 @@ global {
 	int Map_width <- Map_matrix.columns();
 	int Map_height <- Map_matrix.rows();
 	
+	// Date and Time varibale
+	float step <- 10 #s;
+	date my_date <- date("2025-1-1T00:00:00+07:00"); 
+	
 	// General size of species (car, robot, charging poles) in this simulation
 	float general_size <- 2.0;
 	
 	// Robot's variable
 	point robot_location;
+	point robot_initial_location;
 	list<point> list_goals;
 	list<point> list_goal_in_optimal_sequence;
 	path robot_path;
 	list<path> robot_total_path;
+	
 	
 	// Car's variable
 	list<image_file> ev_car_icons <- [
@@ -33,19 +39,17 @@ global {
 		file("../includes/images/electric-car-red.png")
 	];
 	point car_parking_location;
-	// This variable is used to track when the cycle % 10 = 0
-	int cycle_track;
 	// This variable is used for storing the group of car position created in 10 cycle
 	list car_group_location;
 	// This variable is used to store list of car species in 10 cycle;
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.3;
+	float car_generate_possibility <- 0.03;
 	float car_charging_possibility <- 0.5;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
-	path car_path;
+	list<path> list_car_path;
 	// This variable is used to store location of car that need charge
 	list<point> list_car_need_charge_locations;
 	
@@ -66,84 +70,79 @@ global {
 				color <- #yellow;
 			}
 		}
-		robot_location <- point((one_of (cell where not each.is_obstacle)).location);
+		robot_location <- point((one_of (cell where (not each.is_obstacle and not each.is_parking_zone))).location);
+		robot_initial_location <- robot_location;
 		create robot number: 1;
 	}
 	
 	reflex play_simulation {
-		// When cycle track reach 9 (10 cycles) => reset all counter variable after run robot algorithms on those variable 
-		if (cycle_track = 9) {
-			// Impplement the TSP here
-			if (length(list_car_need_charge_locations) > 0) {
-				ask robot {
-					list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
-					write("This is the optimal sequence: " + list_goal_in_optimal_sequence);
-					loop i from: 0 to: (length(list_goal_in_optimal_sequence) - 2){
-						point source <- list_goal_in_optimal_sequence[i];
-						point goal <- list_goal_in_optimal_sequence[i+1]; 
-						using topology(cell) {
-							robot_path <- path_between((cell where not each.is_obstacle), source, goal);
-						}
-						robot_total_path <+ robot_path;
-						write("Optimal Path ID: " + length(robot_total_path) + "Path: " + robot_path.vertices);
-					}
-					do move_to_charge;
+		bool is_car_generated <- flip(car_generate_possibility);
+		if (is_car_generated) {
+			cell parking_cell <- one_of (cell where (each.is_parking_zone and not each.is_occupied));
+			car_parking_location <- point(parking_cell.location);
+			parking_cell.is_occupied <- true;
+			ask parking_cell {
+				if (is_occupied) {
+					color <- #red;
 				}
-				do pause;	
+			}
+			create car number: 1; 
+			car created_car <- car.population[length(car.population)- 1];
+			
+			//Update on 2 groups of car location and car species
+			car_group_location <+ car_parking_location;
+			
+			bool is_car_need_charge <- flip(car_charging_possibility);
+			// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
+			if (is_car_need_charge) {
+				ask created_car {
+					// Features
+					need_charged <- true;
+					car_target_location <- car_parking_location;
+					
+					//Actions
+					do get_car_icon;
+					do move_to_parking_lot;
+					
+					write ("There are " + length(list_car_need_charge_locations) + " in the line!" );
+//						write("These are cars need charge: " + car_group_need_charge);
+				}
+			} else {
+				ask created_car {
+					//Features
+					need_charged <- false;
+					car_target_location <- car_parking_location;
+					
+					//Actions
+					do get_car_icon;
+					do move_to_parking_lot;
+				}
+			}
+		}
+	}
+	
+	reflex check when: every(30#mn) {
+		if (length(list_car_need_charge_locations) > 0) {
+			ask robot {
+				list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
+				write("This is the optimal sequence: " + list_goal_in_optimal_sequence);
+				loop i from: 0 to: (length(list_goal_in_optimal_sequence) - 2){
+					point source <- list_goal_in_optimal_sequence[i];
+					point goal <- list_goal_in_optimal_sequence[i+1]; 
+					using topology(cell) {
+						robot_path <- path_between((cell where not each.is_obstacle), source, goal);
+					}
+					robot_total_path <+ robot_path;
+					write("Optimal Path ID: " + length(robot_total_path) + "Path: " + robot_path.vertices);
+				}
+				do move_to_charge;
 			}
 			//Reset all the tracking variable
-			cycle_track <- 0;
+			robot_location <- list_car_need_charge_locations[length(list_car_need_charge_locations) - 1];
+			list_car_need_charge_locations <- [];
 			car_group_location <- [];
 			car_group <- car.population;
-		} else {
-	//		write("This is cycle number: " + cycle);
-			cycle_track <- cycle_track + 1;
-			bool is_car_generated <- flip(car_generate_possibility);
-			if (is_car_generated) {
-				cell parking_cell <- one_of (cell where (each.is_parking_zone and not each.is_occupied));
-				car_parking_location <- point(parking_cell.location);
-				parking_cell.is_occupied <- true;
-				ask parking_cell {
-					if (is_occupied) {
-						color <- #red;
-					}
-				}
-				create car number: 1; 
-				car created_car <- car.population[length(car.population)- 1];
-				
-				//Update on 2 groups of car location and car species
-				car_group_location <+ car_parking_location;
-				
-				bool is_car_need_charge <- flip(car_charging_possibility);
-				// If car need charge the icon will be red car and if car does not need charge then the icon will be green car
-				if (is_car_need_charge) {
-					ask created_car {
-						// Features
-						need_charged <- true;
-						car_target_location <- car_parking_location;
-						
-						//Actions
-						do get_car_icon;
-						do move_to_parking_lot;
-						
-						car_group_need_charge <+ created_car;
-						list_car_need_charge_locations <+ created_car.location;
-						write ("There are " + length(list_car_need_charge_locations) + " in the line!" );
-//						write("These are cars need charge: " + car_group_need_charge);
-					}
-				} else {
-					ask created_car {
-						//Features
-						need_charged <- false;
-						car_target_location <- car_parking_location;
-						
-						//Actions
-						do get_car_icon;
-						do move_to_parking_lot;
-					}
-				}
-			}
-//			write("In " + cycle + ", There are " + length(car_group_location) + " cars in parking area.");
+			do pause;	
 		}
 	}
 	
@@ -284,6 +283,10 @@ species car {
 	image_file car_icon;
 	point car_initial_location <- point(one_of([cell[1,39], cell[2,39], cell[3,39]]));
 	point car_target_location;
+	bool reach_parking_location <- false;
+	bool waiting_status <- false;
+	path car_path;
+	int cycle_track_for_car_movement <- 0;
 	
 	init {
 		location <- car_initial_location;
@@ -301,10 +304,33 @@ species car {
 		using topology(cell) {
 			car_path <- path_between((cell where (not each.is_obstacle)), car_initial_location, car_target_location);
 		}
-		write("This is car path: " + car_path.vertices);
-		loop i from: 0 to: (length(car_path.vertices) -1) {
-			 location <- car_path.vertices[i];
-//			 write("New location: " + car_path.vertices[i]);
+		list_car_path <+ car_path;
+	}
+	
+	action waiting_to_be_charged {
+		write(self.name + " is ready to be charged");
+		list_car_path >- car_path;
+		waiting_status <- true;
+		if(need_charged) {
+			do adding_on_car_charging_list;
+		}
+	}
+	
+	action adding_on_car_charging_list {
+		car_group_need_charge <+ self;
+		list_car_need_charge_locations <+ self.location;
+	}
+	
+	reflex move_toward_parking_lot when: (not reach_parking_location) {
+		location <- car_path.vertices[cycle_track_for_car_movement];
+		cycle_track_for_car_movement <- cycle_track_for_car_movement + 1;
+	}
+	
+	reflex check_if_in_target_location {
+		reach_parking_location <- (location = car_target_location);
+		write("Car has reach parking location ? " + reach_parking_location);
+		if (reach_parking_location and not waiting_status) {
+			do waiting_to_be_charged;
 		}
 	}
 	
@@ -330,9 +356,21 @@ experiment TSP type: gui {
 			species robot aspect: icon;
 			species car aspect: icon;
 			graphics "elements" {
-				if (length(robot_total_path) > 1) {
+				// Draw car path
+				if (length(list_car_path) > 0){
+					loop cp over: list_car_path {
+						loop v over: cp.vertices[0::(length(cp.vertices)-1)] {
+							draw triangle(0.5) color: #yellow border: #red at: point(v);
+						}
+						loop s over: cp.segments {
+							draw s color: #red ;
+						}
+					}	
+				}
+				// Draw robot path
+				if (length(robot_total_path) > 0) {
 					loop r over: robot_total_path {
-						loop i over: r.vertices[0::(length(r.vertices) - 1)]{
+						loop i over: r.vertices[1::(length(r.vertices) - 1)]{
 							draw triangle(0.5) color: #pink border: #black at: point(i);
 						}
 						loop s over: r.segments {
@@ -340,12 +378,8 @@ experiment TSP type: gui {
 						}
 					}
 				}
-				loop v over: car_path.vertices[0::(length(car_path.vertices)-1)] {
-					draw triangle(0.5) color: #yellow border: #red at: point(v);
-				}
-				loop s over: car_path.segments {
-					draw s color: #red ;
-				}
+				// Draw robot initialial location
+				draw circle(0.5) color: #green border: #black at: robot_initial_location;
 			}
 		}
 	}
