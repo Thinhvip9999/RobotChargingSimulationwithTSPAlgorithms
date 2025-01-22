@@ -45,8 +45,8 @@ global {
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.3;
-	float car_charging_possibility <- 0.3;
+	float car_generate_possibility <- 0.05;
+	float car_charging_possibility <- 0.4;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
 	list<path> list_car_path_moving_in;
@@ -136,10 +136,11 @@ global {
 					robot_total_path <+ robot_path;
 					write("Optimal Path ID: " + length(robot_total_path) + "Path: " + robot_path.vertices);
 				}
-				do move_to_charge;
+				start_moving_to_charge <- true;
+				robot_cycle <- 0;
+				do combine_path;
 			}
 			//Reset all the tracking variable
-			robot_location <- list_car_need_charge_locations[length(list_car_need_charge_locations) - 1];
 			list_car_need_charge_locations <- [];
 			car_group_location <- [];
 			car_group <- car.population;
@@ -164,6 +165,9 @@ species robot {
 	float size <- general_size;
 	rgb color <- #blue;
 	image_file robot_icon <- image_file("../includes/images/robot.png");
+	bool start_moving_to_charge <- false;
+	int robot_cycle <- 0;
+	list<point> path_combined;
 	
 	init {
 		location <- robot_location;
@@ -265,14 +269,32 @@ species robot {
 		return optimal_path;
 	}
 	
-	// Moving action
-	action move_to_charge {
-		loop current_path over: robot_total_path {
-			loop i from:0 to: (length(current_path.vertices) - 1) {
-				location <- current_path.vertices[i];
-			}
+	action combine_path {
+		loop p over: robot_total_path {
+			path_combined <<+ p.vertices;
+			write("This is combined path" + path_combined);
 		}
 	}
+	
+	// Moving action
+//	action move_to_charge {
+//		loop current_path over: robot_total_path {
+//			loop i from:0 to: (length(current_path.vertices) - 1) {
+//				location <- current_path.vertices[i];
+//			}
+//		}
+//	}
+	 reflex move_to_charge when:(start_moving_to_charge and robot_cycle < length(path_combined)) {
+	 	location <- path_combined[robot_cycle];
+	 	robot_cycle <- robot_cycle + 1;
+	 	if (list_goal_in_optimal_sequence contains location) {
+	 		ask car {
+	 			if (car_target_location = myself.location) {
+	 				do move_out_of_parking_lot;
+	 			}
+	 		}
+	 	}
+	 }
 	
 	aspect icon{
 		draw robot_icon size: size;
@@ -285,9 +307,14 @@ species car {
 	point car_initial_location <- point(one_of([cell[1,39], cell[2,39], cell[3,39]]));
 	point car_target_location;
 	bool reach_parking_location <- false;
+	bool start_leaving_parking_location <- false;
+	bool leave_parking_location <- false;
 	bool waiting_status <- false;
-	path car_path;
-	int cycle_track_for_car_movement <- 0;
+	path car_path_moving_in;
+	path car_path_moving_out;
+	int cycle_track_for_car_movement_in <- 0;
+	int cycle_track_for_car_movement_out <- 0;
+	int leaving_location_counter <- 0;
 	
 	init {
 		location <- car_initial_location;
@@ -303,14 +330,14 @@ species car {
 	
 	action move_to_parking_lot {
 		using topology(cell) {
-			car_path <- path_between((cell where (not each.is_obstacle)), car_initial_location, car_target_location);
+			car_path_moving_in <- path_between((cell where (not each.is_obstacle)), car_initial_location, car_target_location);
 		}
-		list_car_path_moving_in <+ car_path;
+		list_car_path_moving_in <+ car_path_moving_in;
 	}
 	
 	action waiting_to_be_charged {
 		write(self.name + " is ready to be charged");
-		list_car_path_moving_in >- car_path;
+		list_car_path_moving_in >- car_path_moving_in;
 		waiting_status <- true;
 		if(need_charged) {
 			do adding_on_car_charging_list;
@@ -318,6 +345,11 @@ species car {
 	}
 	
 	action move_out_of_parking_lot {
+		using topology(cell) {
+			car_path_moving_out <- path_between((cell where (not each.is_obstacle)), car_target_location, car_initial_location);
+		}
+		list_car_path_moving_out <+ car_path_moving_out;
+		start_leaving_parking_location <- true;
 		
 	}
 	
@@ -326,16 +358,34 @@ species car {
 		list_car_need_charge_locations <+ self.location;
 	}
 	
-	reflex move_toward_parking_lot when: (not reach_parking_location) {
-		location <- car_path.vertices[cycle_track_for_car_movement];
-		cycle_track_for_car_movement <- cycle_track_for_car_movement + 1;
+	reflex move_toward_parking_lot when: (not reach_parking_location and not start_leaving_parking_location) {
+		location <- car_path_moving_in.vertices[cycle_track_for_car_movement_in];
+		cycle_track_for_car_movement_in <- cycle_track_for_car_movement_in + 1;
 	}
 	
 	reflex check_if_in_target_location {
 		reach_parking_location <- (location = car_target_location);
-		write("Car has reach parking location ? " + reach_parking_location);
+//		write("Car has reach parking location ? " + reach_parking_location);
+		// Add waiting_status to ensure the function waiting to be charged will not be called multiple time
 		if (reach_parking_location and not waiting_status) {
 			do waiting_to_be_charged;
+		}
+	}
+	
+	reflex move_out_of_parking_lot when: (start_leaving_parking_location) {
+		location <- car_path_moving_out.vertices[cycle_track_for_car_movement_out];
+		cycle_track_for_car_movement_out <- cycle_track_for_car_movement_out + 1;
+	}
+	
+	reflex check_if_has_moved_out {
+		leave_parking_location <- (location = car_initial_location);
+		write("Car has move out parking location ? " + leave_parking_location);
+		if (leave_parking_location) {
+			if (leaving_location_counter = 1) {
+				do die;
+			} else {
+				leaving_location_counter <- leaving_location_counter + 1;
+			}
 		}
 	}
 	
