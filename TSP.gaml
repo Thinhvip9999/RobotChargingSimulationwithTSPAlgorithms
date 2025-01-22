@@ -76,6 +76,18 @@ global {
 		create robot number: 1;
 	}
 	
+	reflex update_color_for_map {
+		ask cell {
+			if (is_obstacle) {
+				color <- #black;
+			} else if (is_occupied) {
+				color <- #red;
+			} else if (is_parking_zone) {
+				color <- #yellow;
+			}
+		}
+	}
+	
 	reflex car_generated when: every(1#mn) {
 		bool is_car_generated <- flip(car_generate_possibility);
 		if (is_car_generated) {
@@ -123,6 +135,8 @@ global {
 	}
 	
 	reflex check when: every(1#hour) {
+		list_goal_in_optimal_sequence <- [];
+		robot_total_path <- [];
 		if (length(list_car_need_charge_locations) > 0) {
 			ask robot {
 				list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
@@ -144,7 +158,7 @@ global {
 			list_car_need_charge_locations <- [];
 			car_group_location <- [];
 			car_group <- car.population;
-			do pause;	
+//			do pause;	
 		}
 	}
 	
@@ -350,6 +364,11 @@ species car {
 		}
 		list_car_path_moving_out <+ car_path_moving_out;
 		start_leaving_parking_location <- true;
+		write("car Target location in real: " + car_target_location);
+		ask cell(car_target_location) {
+			is_occupied <- false;
+			write("car Target location in cell: " + location);
+		}
 		
 	}
 	
@@ -379,7 +398,7 @@ species car {
 	
 	reflex check_if_has_moved_out {
 		leave_parking_location <- (location = car_initial_location);
-		write("Car has move out parking location ? " + leave_parking_location);
+//		write("Car has move out parking location ? " + leave_parking_location);
 		if (leave_parking_location) {
 			if (leaving_location_counter = 1) {
 				do die;
