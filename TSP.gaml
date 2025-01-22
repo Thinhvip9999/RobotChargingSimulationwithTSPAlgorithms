@@ -331,6 +331,8 @@ species car {
 	int cycle_track_for_car_movement_in <- 0;
 	int cycle_track_for_car_movement_out <- 0;
 	int leaving_location_counter <- 0;
+	int car_fully_charged_cycle <- 0;
+	int car_waiting_time <- rnd(360, 720, 5);
 	
 	init {
 		location <- car_initial_location;
@@ -410,6 +412,18 @@ species car {
 		}
 	}
 	
+	reflex fully_charged_car_moving_out {
+		if (not need_charged) {
+			if (reach_parking_location) {
+				if (car_fully_charged_cycle = car_waiting_time) {
+					do move_out_of_parking_lot;
+				} else {
+					car_fully_charged_cycle <- car_fully_charged_cycle + 1;
+				}
+			}
+		}
+	}
+	
 	aspect icon {
 		draw car_icon size: general_size;
 	}
@@ -431,10 +445,8 @@ experiment TSP type: gui {
 	output synchronized: true {
 		display main_display type: 2d antialias: false {
 			grid cell border: #black;
-			species robot aspect: icon;
-			species car aspect: icon;
 			graphics "elements" {
-				// Draw car path
+				// Draw car path moving in
 				if (length(list_car_path_moving_in) > 0){
 					loop cp over: list_car_path_moving_in {
 						loop v over: cp.vertices[0::(length(cp.vertices)-1)] {
@@ -445,7 +457,7 @@ experiment TSP type: gui {
 						}
 					}	
 				}
-				// Draw robot path
+				// Draw robot path going to charge car
 				if (length(robot_total_path) > 0) {
 					loop r over: robot_total_path {
 						loop i over: r.vertices[1::(length(r.vertices) - 1)]{
@@ -457,6 +469,8 @@ experiment TSP type: gui {
 					}
 				}
 			}
+			species robot aspect: icon;
+			species car aspect: icon;
 		}
 	}
 }
