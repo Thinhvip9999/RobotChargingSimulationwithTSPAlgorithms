@@ -45,11 +45,12 @@ global {
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.03;
-	float car_charging_possibility <- 0.5;
+	float car_generate_possibility <- 0.3;
+	float car_charging_possibility <- 0.3;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
-	list<path> list_car_path;
+	list<path> list_car_path_moving_in;
+	list<path> list_car_path_moving_out;
 	// This variable is used to store location of car that need charge
 	list<point> list_car_need_charge_locations;
 	
@@ -75,7 +76,7 @@ global {
 		create robot number: 1;
 	}
 	
-	reflex play_simulation {
+	reflex car_generated when: every(1#mn) {
 		bool is_car_generated <- flip(car_generate_possibility);
 		if (is_car_generated) {
 			cell parking_cell <- one_of (cell where (each.is_parking_zone and not each.is_occupied));
@@ -121,7 +122,7 @@ global {
 		}
 	}
 	
-	reflex check when: every(30#mn) {
+	reflex check when: every(1#hour) {
 		if (length(list_car_need_charge_locations) > 0) {
 			ask robot {
 				list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
@@ -304,16 +305,20 @@ species car {
 		using topology(cell) {
 			car_path <- path_between((cell where (not each.is_obstacle)), car_initial_location, car_target_location);
 		}
-		list_car_path <+ car_path;
+		list_car_path_moving_in <+ car_path;
 	}
 	
 	action waiting_to_be_charged {
 		write(self.name + " is ready to be charged");
-		list_car_path >- car_path;
+		list_car_path_moving_in >- car_path;
 		waiting_status <- true;
 		if(need_charged) {
 			do adding_on_car_charging_list;
 		}
+	}
+	
+	action move_out_of_parking_lot {
+		
 	}
 	
 	action adding_on_car_charging_list {
@@ -347,8 +352,10 @@ grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
  
 
 experiment TSP type: gui {
-	parameter "MAP:" var: scenario <- "parking_lot" among: ["parking_lot"];
-	parameter "Type of Neighborhood:" var: neigborhood_type <- 4 among: [4, 8];
+	parameter "MAP: " var: scenario <- "parking_lot" among: ["parking_lot"];
+	parameter "Type of Neighborhood: " var: neigborhood_type <- 4 among: [4, 8];
+	parameter "Car Generate Posibility: " var: car_generate_possibility min: 0.01 max: 0.4; 
+	parameter "Car Need Charging Posibility: " var: car_charging_possibility min: 0.01 max: 0.4; 
 	
 	output synchronized: true {
 		display main_display type: 2d antialias: false {
@@ -357,8 +364,8 @@ experiment TSP type: gui {
 			species car aspect: icon;
 			graphics "elements" {
 				// Draw car path
-				if (length(list_car_path) > 0){
-					loop cp over: list_car_path {
+				if (length(list_car_path_moving_in) > 0){
+					loop cp over: list_car_path_moving_in {
 						loop v over: cp.vertices[0::(length(cp.vertices)-1)] {
 							draw triangle(0.5) color: #yellow border: #red at: point(v);
 						}
