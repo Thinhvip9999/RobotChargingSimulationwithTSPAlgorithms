@@ -366,7 +366,10 @@ species car {
 		using topology(cell) {
 			car_path_moving_out <- path_between((cell where (not each.is_obstacle)), car_target_location, car_initial_location);
 		}
+		write("Before Adding: " + length(list_car_path_moving_out));
 		list_car_path_moving_out <+ car_path_moving_out;
+		write("Car path moving out" + car_path_moving_out.vertices);
+		write("After Adding: " + length(list_car_path_moving_out));
 		start_leaving_parking_location <- true;
 		write("car Target location in real: " + car_target_location);
 		ask cell(car_target_location) {
@@ -405,6 +408,9 @@ species car {
 //		write("Car has move out parking location ? " + leave_parking_location);
 		if (leave_parking_location) {
 			if (leaving_location_counter = 1) {
+				write("Before Subtracting: " + length(list_car_path_moving_out));
+				list_car_path_moving_out >- car_path_moving_out;
+				write("After Subtracting: " + length(list_car_path_moving_out));
 				do die;
 			} else {
 				leaving_location_counter <- leaving_location_counter + 1;
@@ -459,12 +465,12 @@ experiment TSP type: gui {
 				}
 				// Draw car path moving out 
 				if (length(list_car_path_moving_out) > 0) {
-					loop cp over: list_car_path_moving_out {
-						loop v over: cp.vertices[0::(length(cp.vertices)-1)] {
-							draw triangle(0.5) color: #orange border: #red at: point(v);
+					loop cp_o over: list_car_path_moving_out {
+						loop v_o over: cp_o.vertices[0::(length(cp_o.vertices)-1)] {
+							draw triangle(0.5) color: #orange border: #red at: point(v_o);
 						}
-						loop s over: cp.segments {
-							draw s color: #black ;
+						loop s_o over: cp_o.segments {
+							draw s_o color: #black ;
 						}
 					}
 				}
