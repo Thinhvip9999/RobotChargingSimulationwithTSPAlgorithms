@@ -457,6 +457,17 @@ experiment TSP type: gui {
 						}
 					}	
 				}
+				// Draw car path moving out 
+				if (length(list_car_path_moving_out) > 0) {
+					loop cp over: list_car_path_moving_out {
+						loop v over: cp.vertices[0::(length(cp.vertices)-1)] {
+							draw triangle(0.5) color: #orange border: #red at: point(v);
+						}
+						loop s over: cp.segments {
+							draw s color: #black ;
+						}
+					}
+				}
 				// Draw robot path going to charge car
 				if (length(robot_total_path) > 0) {
 					loop r over: robot_total_path {
