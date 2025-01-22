@@ -45,8 +45,8 @@ global {
 	list car_group;
 	// This variable is used to track how many car need charge;
 	list<car> car_group_need_charge;
-	float car_generate_possibility <- 0.05;
-	float car_charging_possibility <- 0.4;
+	float car_generate_possibility <- 0.1;
+	float car_charging_possibility <- 0.5;
 	// This variable is used for creating the first position of car when entering basement
 	list car_initial_locations_list <- [];
 	list<path> list_car_path_moving_in;
@@ -134,11 +134,13 @@ global {
 		}
 	}
 	
-	reflex check when: every(1#hour) {
+	reflex robot_move_to_charge_car when: every(1#hour) {
 		list_goal_in_optimal_sequence <- [];
 		robot_total_path <- [];
 		if (length(list_car_need_charge_locations) > 0) {
 			ask robot {
+				path_combined <- [];
+				robot_location <- location;
 				list_goal_in_optimal_sequence <- tsp_solver(robot_location, list_car_need_charge_locations);
 				write("This is the optimal sequence: " + list_goal_in_optimal_sequence);
 				loop i from: 0 to: (length(list_goal_in_optimal_sequence) - 2){
@@ -424,7 +426,7 @@ experiment TSP type: gui {
 	parameter "MAP: " var: scenario <- "parking_lot" among: ["parking_lot"];
 	parameter "Type of Neighborhood: " var: neigborhood_type <- 4 among: [4, 8];
 	parameter "Car Generate Posibility: " var: car_generate_possibility min: 0.01 max: 0.4; 
-	parameter "Car Need Charging Posibility: " var: car_charging_possibility min: 0.01 max: 0.4; 
+	parameter "Car Need Charging Posibility: " var: car_charging_possibility min: 0.01 max: 0.6; 
 	
 	output synchronized: true {
 		display main_display type: 2d antialias: false {
@@ -454,8 +456,6 @@ experiment TSP type: gui {
 						}
 					}
 				}
-				// Draw robot initialial location
-				draw circle(0.5) color: #green border: #black at: robot_initial_location;
 			}
 		}
 	}
