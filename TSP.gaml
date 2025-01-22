@@ -134,7 +134,8 @@ global {
 		}
 	}
 	
-	reflex robot_move_to_charge_car when: every(1#hour) {
+	reflex robot_move_to_charge_car when: every(30#mn) {
+		list_car_path_moving_out <- [];
 		list_goal_in_optimal_sequence <- [];
 		robot_total_path <- [];
 		if (length(list_car_need_charge_locations) > 0) {
