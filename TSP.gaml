@@ -333,7 +333,7 @@ species car {
 	int cycle_track_for_car_movement_out <- 0;
 	int leaving_location_counter <- 0;
 	int car_fully_charged_cycle <- 0;
-	int car_waiting_time <- rnd(360, 720, 5);
+	int car_waiting_time <- rnd(180, 360, 5);
 	
 	init {
 		location <- car_initial_location;
@@ -377,7 +377,6 @@ species car {
 			is_occupied <- false;
 			write("car Target location in cell: " + location);
 		}
-		
 	}
 	
 	action adding_on_car_charging_list {
@@ -446,7 +445,7 @@ grid cell width: Map_width height: Map_height neighbors: neigborhood_type {
 experiment TSP type: gui {
 	parameter "MAP: " var: scenario <- "parking_lot" among: ["parking_lot"];
 	parameter "Type of Neighborhood: " var: neigborhood_type <- 4 among: [4, 8];
-	parameter "Car Generate Posibility: " var: car_generate_possibility min: 0.01 max: 0.4; 
+	parameter "Car Generate Posibility: " var: car_generate_possibility min: 0.01 max: 0.6; 
 	parameter "Car Need Charging Posibility: " var: car_charging_possibility min: 0.01 max: 0.6; 
 	
 	output synchronized: true {
